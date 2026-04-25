@@ -1,7 +1,5 @@
 # Fullerenes
-
-<img width="676" height="369" alt="df746978-b1d8-4a09-927b-ebf8c58a0f89-removebg-preview" src="https://github.com/user-attachments/assets/ff0f995a-4b76-41fa-83e0-ae24c8599607" />
-
+<img width="497" height="284" alt="df746978-b1d8-4a09-927b-ebf8c58a0f89-removebg-preview" src="https://github.com/user-attachments/assets/27f66402-ea0f-4483-8fc3-b70b901ff5f5" />
 
 Persistent memory for AI coding agents.
 
