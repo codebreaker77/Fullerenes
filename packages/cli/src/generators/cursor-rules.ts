@@ -1,7 +1,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Database } from 'better-sqlite3';
-import { getTopNodes, getEntryPoints, getModules } from '@fullerenes/core';
+import { getTopNodes, getEntryPoints, getModules } from 'fullerenes-core';
 
 export function generateCursorRules(rootDir: string, db: Database) {
   const topNodes = getTopNodes(db, 10);

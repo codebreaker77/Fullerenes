@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import ora from 'ora';
-import { getDbPath, indexProject, initDatabase } from '@fullerenes/core';
+import { getDbPath, indexProject, initDatabase } from 'fullerenes-core';
 import { generateClaudeMd } from '../generators/claude-md.js';
 import { generateCursorRules } from '../generators/cursor-rules.js';
 

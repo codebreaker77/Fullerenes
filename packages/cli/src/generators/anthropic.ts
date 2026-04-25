@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Database } from 'better-sqlite3';
-import { getMeta, setMeta } from '@fullerenes/core';
+import { getMeta, setMeta } from 'fullerenes-core';
 
 let anthropicClient: Anthropic | null = null;
 let apiCallsThisSession = 0;
@@ -19,17 +19,19 @@ export async function generateProjectSummary(
   fileCount: number,
   nodeCount: number,
   moduleCount: number,
-  topFilesContext: string
+  topFilesContext: string,
 ): Promise<string> {
-  const fallback = `A ${language} project with ${fileCount} files, ${nodeCount} functions and classes across ${moduleCount} modules.`;
-  
+  const fallback = buildFallbackSummary(language, fileCount, nodeCount, moduleCount, topFilesContext);
+
   if (!anthropicClient || apiCallsThisSession >= MAX_API_CALLS_PER_RUN) {
     return fallback;
   }
 
-  const cacheKey = `ai_summary_project`;
+  const cacheKey = 'ai_summary_project';
   const cached = getMeta(db, cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    return cached;
+  }
 
   try {
     apiCallsThisSession++;
@@ -40,16 +42,15 @@ export async function generateProjectSummary(
       messages: [
         {
           role: 'user',
-          content: `Write a 2-sentence high-level overview of this project. Stats: ${language}, ${fileCount} files, ${nodeCount} nodes. Key modules/exports:\n${topFilesContext}`
-        }
-      ]
+          content: `Write a 2-sentence high-level overview of this project. Stats: ${language}, ${fileCount} files, ${nodeCount} nodes. Key modules/exports:\n${topFilesContext}`,
+        },
+      ],
     });
 
-    const summary = (message.content[0] as any).text.replace(/\n+/g, ' ').trim();
+    const summary = extractText(message.content).replace(/\n+/g, ' ').trim();
     setMeta(db, cacheKey, summary);
     return summary;
-  } catch (err) {
-    // console.error("Anthropic error:", err); // Keep stdout clean
+  } catch {
     return fallback;
   }
 }
@@ -58,7 +59,7 @@ export async function generateModuleDescription(
   db: Database,
   fileHash: string,
   filePath: string,
-  signaturesContext: string
+  signaturesContext: string,
 ): Promise<string> {
   if (!anthropicClient || apiCallsThisSession >= MAX_API_CALLS_PER_RUN) {
     return filePath;
@@ -66,26 +67,64 @@ export async function generateModuleDescription(
 
   const cacheKey = `ai_summary_${fileHash}`;
   const cached = getMeta(db, cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    return cached;
+  }
 
   try {
-     apiCallsThisSession++;
-     const message = await anthropicClient.messages.create({
+    apiCallsThisSession++;
+    const message = await anthropicClient.messages.create({
       model: 'claude-3-haiku-20240307',
       max_tokens: 100,
       system: 'Write EXACTLY 1 concise sentence describing the purpose of this file based on its functions.',
       messages: [
         {
           role: 'user',
-          content: `File: ${filePath}\n\nKey functions/classes:\n${signaturesContext}`
-        }
-      ]
+          content: `File: ${filePath}\n\nKey functions/classes:\n${signaturesContext}`,
+        },
+      ],
     });
 
-    const desc = (message.content[0] as any).text.replace(/\n+/g, ' ').trim();
-    setMeta(db, cacheKey, desc);
-    return desc;
-  } catch (err) {
+    const description = extractText(message.content).replace(/\n+/g, ' ').trim();
+    setMeta(db, cacheKey, description);
+    return description;
+  } catch {
     return filePath;
   }
+}
+
+function buildFallbackSummary(
+  language: string,
+  fileCount: number,
+  nodeCount: number,
+  moduleCount: number,
+  topFilesContext: string,
+): string {
+  const lowerContext = topFilesContext.toLowerCase();
+  const projectKind = inferProjectKind(lowerContext);
+  return `A ${language} ${projectKind} with ${fileCount} files, ${nodeCount} indexed functions and classes across ${moduleCount} key modules. Add ANTHROPIC_API_KEY to generate an AI-written overview automatically.`;
+}
+
+function inferProjectKind(context: string): string {
+  if (context.includes('train') || context.includes('agent') || context.includes('env')) {
+    return 'agent training project';
+  }
+  if (context.includes('auth')) {
+    return 'authentication-focused codebase';
+  }
+  if (context.includes('api') || context.includes('server') || context.includes('route')) {
+    return 'backend service';
+  }
+  if (context.includes('cli') || context.includes('command')) {
+    return 'CLI tool';
+  }
+  if (context.includes('graph') || context.includes('query')) {
+    return 'knowledge graph tool';
+  }
+  return 'project';
+}
+
+function extractText(content: Array<{ type: string; text?: string }>): string {
+  const textBlock = content.find((item) => item.type === 'text');
+  return textBlock?.text ?? '';
 }

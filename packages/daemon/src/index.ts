@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import chokidar, { type FSWatcher } from 'chokidar';
-import { createProjectIgnoreMatcher, detectLanguage, indexProject, type IndexResult } from '@fullerenes/core';
+import { createProjectIgnoreMatcher, detectLanguage, indexProject, type IndexResult } from 'fullerenes-core';
 
 export interface DaemonOptions {
   debounceMs?: number;

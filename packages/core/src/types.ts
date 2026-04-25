@@ -2,8 +2,6 @@
  * Shared type definitions for the Fullerenes core package.
  */
 
-// ─── Node Types ──────────────────────────────────────────────────────────────
-
 export type NodeType =
   | 'function'
   | 'class'
@@ -28,10 +26,8 @@ export type Language =
   | 'go'
   | 'java';
 
-// ─── Database Records ────────────────────────────────────────────────────────
-
 export interface NodeRecord {
-  id: string; // format: "filepath::type::name"
+  id: string;
   type: NodeType;
   name: string;
   file_path: string;
@@ -41,7 +37,7 @@ export interface NodeRecord {
   docstring: string | null;
   language: Language;
   hash: string | null;
-  metadata: string | null; // JSON blob
+  metadata: string | null;
   created_at?: number;
   updated_at?: number;
 }
@@ -65,8 +61,6 @@ export interface FileRecord {
   last_indexed: number | null;
 }
 
-// ─── Parser Types ────────────────────────────────────────────────────────────
-
 export interface ParseResult {
   nodes: NodeRecord[];
   edges: EdgeRecord[];
@@ -85,22 +79,18 @@ export interface Parser {
   parse(filePath: string, content: string): Promise<ParseResult>;
 }
 
-// ─── Walker Types ────────────────────────────────────────────────────────────
-
 export interface WalkOptions {
   extensions?: string[];
-  maxFileSize?: number; // bytes, default 500KB
-  respectGitignore?: boolean; // default true
+  maxFileSize?: number;
+  respectGitignore?: boolean;
 }
 
 export interface FileInfo {
-  path: string; // absolute path
-  relativePath: string; // relative to project root
+  path: string;
+  relativePath: string;
   language: Language;
   sizeBytes: number;
 }
-
-// ─── Query Types ─────────────────────────────────────────────────────────────
 
 export interface ProjectStats {
   fileCount: number;
@@ -142,17 +132,42 @@ export interface Subgraph {
   edges: EdgeRecord[];
 }
 
+export interface QuerySection {
+  title: string;
+  lines: string[];
+}
+
 export interface QueryResult {
   text: string;
   nodeCount: number;
   truncated: boolean;
+  estimatedTokens: number;
+  sections: QuerySection[];
 }
 
-// ─── Indexer Types ───────────────────────────────────────────────────────────
+export interface ImpactNode {
+  id: string;
+  name: string;
+  type: NodeType;
+  filePath: string;
+  lineStart: number | null;
+  depth: number;
+  via: EdgeType[];
+}
+
+export interface ImpactResult {
+  target: NodeInfo;
+  directDependents: ImpactNode[];
+  transitiveDependents: ImpactNode[];
+  totalDependents: number;
+  uniqueFiles: string[];
+  risk: 'LOW' | 'MEDIUM' | 'HIGH';
+  summary: string;
+}
 
 export interface IndexOptions {
-  incremental?: boolean; // default false
-  concurrency?: number; // default 4
+  incremental?: boolean;
+  concurrency?: number;
   onProgress?: (current: number, total: number, file: string) => void;
   onError?: (file: string, error: Error) => void;
 }
@@ -166,8 +181,6 @@ export interface IndexResult {
   durationMs: number;
   errors: ParseError[];
 }
-
-// ─── Extension → Language mapping ────────────────────────────────────────────
 
 export const EXTENSION_MAP: Record<string, Language> = {
   '.ts': 'typescript',
@@ -200,4 +213,4 @@ export const SKIP_DIRS = new Set([
   '.vscode',
 ]);
 
-export const DEFAULT_MAX_FILE_SIZE = 500 * 1024; // 500KB
+export const DEFAULT_MAX_FILE_SIZE = 500 * 1024;

@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { getDbPath, initDatabase } from '@fullerenes/core';
+import { getDbPath, initDatabase } from 'fullerenes-core';
 import { startDaemon } from 'fullerenes-daemon';
 import { generateClaudeMd } from '../generators/claude-md.js';
 import { generateCursorRules } from '../generators/cursor-rules.js';

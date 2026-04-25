@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { getDbPath, initDatabase, queryWithBudget } from '@fullerenes/core';
+import { getDbPath, initDatabase, queryWithBudget } from 'fullerenes-core';
 
 export async function queryCommand(question: string, options: { budget?: number; json?: boolean }) {
   const rootDir = process.cwd();
@@ -13,9 +13,10 @@ export async function queryCommand(question: string, options: { budget?: number;
     return;
   }
 
-  console.log(chalk.blue('Fullerenes') + ' Graph search result\n');
+  console.log(`${chalk.blue('Fullerenes')} query result\n`);
   console.log(result.text);
   console.log(chalk.gray('\n----------------------------------------'));
-  console.log(`Extracted nodes: ${chalk.cyan(result.nodeCount)}`);
+  console.log(`Matched nodes: ${chalk.cyan(result.nodeCount)}`);
+  console.log(`Estimated tokens: ${chalk.cyan(result.estimatedTokens)}`);
   console.log(`Truncated early: ${result.truncated ? chalk.red('Yes') : chalk.green('No')}`);
 }
