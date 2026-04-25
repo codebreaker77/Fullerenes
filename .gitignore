@@ -1,0 +1,9 @@
+node_modules/
+packages/*/dist/
+packages/*/.turbo/
+packages/*/tsconfig.tsbuildinfo
+.turbo/
+.fullerenes/
+coverage/
+*.tgz
+.DS_Store

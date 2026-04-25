@@ -1,0 +1,51 @@
+{
+  "name": "fullerenes-daemon",
+  "version": "0.1.0",
+  "description": "File watcher and incremental sync daemon for Fullerenes OSS",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "ai",
+    "watcher",
+    "daemon",
+    "indexing",
+    "codebase"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codebreaker77/Fullerenes.git",
+    "directory": "packages/daemon"
+  },
+  "homepage": "https://fullerenes.dev",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@fullerenes/core": "^0.1.0",
+    "chokidar": "^4.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

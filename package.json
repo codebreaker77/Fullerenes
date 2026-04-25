@@ -1,0 +1,36 @@
+{
+  "name": "fullerenes-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source local-first knowledge graph tools for AI coding agents",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "clean": "turbo clean && rimraf node_modules packages/*/dist packages/*/.turbo packages/*/tsconfig.tsbuildinfo",
+    "pack:core": "npm pack --workspace @fullerenes/core",
+    "pack:daemon": "npm pack --workspace fullerenes-daemon",
+    "pack:cli": "npm pack --workspace fullerenes",
+    "pack:all": "npm run pack:core && npm run pack:daemon && npm run pack:cli"
+  },
+  "packageManager": "npm@11.10.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/node": "^20.14.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.0",
+    "@typescript-eslint/parser": "^8.59.0",
+    "eslint": "^9.5.0",
+    "prettier": "^3.3.0",
+    "rimraf": "^5.0.7",
+    "turbo": "^2.5.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "name": "fullerenes",
+  "version": "0.1.0",
+  "description": "Local-first CLI and MCP server for codebase knowledge graphs",
+  "type": "module",
+  "main": "./dist/cli.js",
+  "types": "./dist/cli.d.ts",
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "fullerenes": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "ai",
+    "coding-agent",
+    "knowledge-graph",
+    "codebase",
+    "mcp",
+    "claude",
+    "cursor",
+    "copilot",
+    "context"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codebreaker77/Fullerenes.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://fullerenes.dev",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.91.0",
+    "@fullerenes/core": "^0.1.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "chalk": "^4.1.2",
+    "cli-progress": "^3.12.0",
+    "commander": "^14.0.3",
+    "fullerenes-daemon": "^0.1.0",
+    "ora": "^9.4.0"
+  },
+  "devDependencies": {
+    "@types/cli-progress": "^3.11.6",
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

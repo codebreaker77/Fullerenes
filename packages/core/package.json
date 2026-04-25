@@ -1,0 +1,56 @@
+{
+  "name": "@fullerenes/core",
+  "version": "0.1.0",
+  "description": "Core parser, graph engine, and query layer for Fullerenes OSS",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "ai",
+    "knowledge-graph",
+    "codebase",
+    "parser",
+    "mcp",
+    "sqlite"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codebreaker77/Fullerenes.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://fullerenes.dev",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.9.0",
+    "ignore": "^5.3.2",
+    "p-limit": "^3.1.0",
+    "tree-sitter-wasms": "^0.1.13",
+    "web-tree-sitter": "^0.20.8"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}
