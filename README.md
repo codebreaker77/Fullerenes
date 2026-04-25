@@ -39,7 +39,21 @@ This repo intentionally excludes the hosted product layer:
 - Go
 - Java
 
-## Quick start
+## Install
+
+After the npm packages are published:
+
+```bash
+npm install -g fullerenes
+```
+
+Or run it without a global install:
+
+```bash
+npx fullerenes init
+```
+
+If you are working from source in this repo:
 
 ```bash
 npm install
@@ -47,15 +61,65 @@ npm run build
 node packages/cli/dist/cli.js init .
 ```
 
-After publishing, the normal user flow becomes:
+## Using Fullerenes
+
+### 1. Index a repository
+
+Run Fullerenes at the root of a project:
 
 ```bash
 npx fullerenes init
+```
+
+This creates:
+- `.fullerenes/graph.db`
+- `CLAUDE.md`
+- `AGENTS.md`
+- `.cursor/rules/fullerenes.mdc`
+
+`CLAUDE.md` and `AGENTS.md` preserve user-written instructions outside the managed Fullerenes block.
+
+### 2. Ask questions about the codebase
+
+```bash
 npx fullerenes query "how does authentication work"
+npx fullerenes query "where is the main entry point" --budget 1200
 npx fullerenes stats
+```
+
+The query command reads from the local graph instead of shoving raw files into context.
+
+### 3. Connect an agent over MCP
+
+Start the local MCP server:
+
+```bash
 npx fullerenes mcp
+```
+
+For Claude Code, add it like this:
+
+```bash
+claude mcp add fullerenes -- npx fullerenes mcp
+```
+
+Once connected, the agent can use tools like:
+- `query_codebase`
+- `get_function`
+- `find_entry_points`
+- `get_file_context`
+- `search_code`
+- `get_callers`
+- `get_stats`
+- `get_subgraph`
+
+### 4. Keep the graph fresh during development
+
+```bash
 npx fullerenes watch
 ```
+
+Watch mode listens for file changes, runs incremental reindexing, and refreshes generated agent files when the graph changes enough to matter.
 
 ## Core CLI commands
 
@@ -65,17 +129,6 @@ npx fullerenes watch
 - `fullerenes stats [path]`
 - `fullerenes mcp [path]`
 - `fullerenes watch [path]`
-
-## MCP tools
-
-- `query_codebase`
-- `get_function`
-- `find_entry_points`
-- `get_file_context`
-- `search_code`
-- `get_callers`
-- `get_stats`
-- `get_subgraph`
 
 ## Repository layout
 

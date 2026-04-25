@@ -8,10 +8,37 @@ The Fullerenes OSS CLI builds a local knowledge graph of your codebase and expos
 npm install -g fullerenes
 ```
 
-Or run without installing:
+Or run it without installing:
 
 ```bash
 npx fullerenes init
+```
+
+## Typical workflow
+
+Index a repository:
+
+```bash
+fullerenes init
+```
+
+Ask questions against the local graph:
+
+```bash
+fullerenes query "how does auth work"
+fullerenes stats
+```
+
+Start the MCP server:
+
+```bash
+fullerenes mcp
+```
+
+Keep the graph up to date while coding:
+
+```bash
+fullerenes watch
 ```
 
 ## Commands
