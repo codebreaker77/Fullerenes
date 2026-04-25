@@ -2,7 +2,7 @@
 
 This repo is prepared for publishing three npm packages:
 
-1. `@fullerenes/core`
+1. `fullerenes-core`
 2. `fullerenes-daemon`
 3. `fullerenes`
 
@@ -37,14 +37,12 @@ npm run pack:all
 npm login
 ```
 
-If you use org-scoped access controls, make sure your npm account has permission to publish `@fullerenes/core`.
-
 ## First publish order
 
 Publish in this order so workspace dependencies resolve correctly on npm:
 
 ```bash
-npm publish --workspace @fullerenes/core --access public
+npm publish --workspace fullerenes-core --access public
 npm publish --workspace fullerenes-daemon --access public
 npm publish --workspace fullerenes --access public
 ```
@@ -54,7 +52,7 @@ npm publish --workspace fullerenes --access public
 For a patch release:
 
 ```bash
-npm version patch --workspace @fullerenes/core
+npm version patch --workspace fullerenes-core
 npm version patch --workspace fullerenes-daemon
 npm version patch --workspace fullerenes
 ```
@@ -63,7 +61,7 @@ Then rebuild and publish in the same order:
 
 ```bash
 npm run build
-npm publish --workspace @fullerenes/core --access public
+npm publish --workspace fullerenes-core --access public
 npm publish --workspace fullerenes-daemon --access public
 npm publish --workspace fullerenes --access public
 ```
@@ -75,7 +73,7 @@ npm publish --workspace fullerenes --access public
 - `npm run pack:all`
 - verify generated tarballs
 - `npm login`
-- publish `@fullerenes/core`
+- publish `fullerenes-core`
 - publish `fullerenes-daemon`
 - publish `fullerenes`
 - test:

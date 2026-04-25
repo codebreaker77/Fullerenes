@@ -12,7 +12,7 @@
     "test": "turbo test",
     "lint": "turbo lint",
     "clean": "turbo clean && rimraf node_modules packages/*/dist packages/*/.turbo packages/*/tsconfig.tsbuildinfo",
-    "pack:core": "npm pack --workspace @fullerenes/core",
+    "pack:core": "npm pack --workspace fullerenes-core",
     "pack:daemon": "npm pack --workspace fullerenes-daemon",
     "pack:cli": "npm pack --workspace fullerenes",
     "pack:all": "npm run pack:core && npm run pack:daemon && npm run pack:cli"

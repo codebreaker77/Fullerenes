@@ -1,5 +1,5 @@
 {
-  "name": "@fullerenes/core",
+  "name": "fullerenes-core",
   "version": "0.1.0",
   "description": "Core parser, graph engine, and query layer for Fullerenes OSS",
   "type": "module",

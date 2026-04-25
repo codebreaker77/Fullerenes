@@ -1,6 +1,6 @@
 {
   "name": "fullerenes-daemon",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "File watcher and incremental sync daemon for Fullerenes OSS",
   "type": "module",
   "main": "./dist/index.js",
@@ -40,7 +40,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@fullerenes/core": "^0.1.0",
+    "fullerenes-core": "^0.1.0",
     "chokidar": "^4.0.3"
   },
   "devDependencies": {

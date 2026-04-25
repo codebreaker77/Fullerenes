@@ -1,4 +1,4 @@
-# @fullerenes/core
+# fullerenes-core
 
 Core parser, graph engine, SQLite schema, and query layer for Fullerenes OSS.
 

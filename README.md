@@ -8,7 +8,7 @@ Fullerenes turns a source tree into a local knowledge graph that agents can quer
 
 - `fullerenes`
   Local-first CLI, MCP server, and agent-context file generation
-- `@fullerenes/core`
+- `fullerenes-core`
   Parser engine, SQLite graph storage, incremental indexer, and query layer
 - `fullerenes-daemon`
   File watcher and auto-reindex daemon
@@ -156,7 +156,7 @@ npm run lint
 
 This repo is prepared to publish:
 
-1. `@fullerenes/core`
+1. `fullerenes-core`
 2. `fullerenes-daemon`
 3. `fullerenes`
 
