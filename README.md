@@ -1,5 +1,8 @@
 # Fullerenes
 
+<img width="676" height="369" alt="df746978-b1d8-4a09-927b-ebf8c58a0f89-removebg-preview" src="https://github.com/user-attachments/assets/ff0f995a-4b76-41fa-83e0-ae24c8599607" />
+
+
 Persistent memory for AI coding agents.
 
 Fullerenes turns a source tree into a local knowledge graph that agents can query instead of repeatedly rebuilding context from raw files. It is a navigation and impact-analysis layer for AI coding agents: show the right code, the right callers, the right entry points, and the likely blast radius before editing.
