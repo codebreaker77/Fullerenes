@@ -5,4 +5,4 @@ export * from './parsers/index.js';
 export * from './graph/queries.js';
 export * from './indexer/index.js';
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.1.2';

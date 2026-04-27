@@ -34,6 +34,6 @@
     "vitest": "^2.0.0"
   },
   "dependencies": {
-    "fullerenes": "^0.1.2"
+    "fullerenes": "^0.1.4"
   }
 }

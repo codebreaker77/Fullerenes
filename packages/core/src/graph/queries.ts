@@ -190,15 +190,21 @@ export function searchNodes(db: Database, query: string, limit = 10): NodeInfo[]
           (SELECT COUNT(*) FROM edges e WHERE e.to_id = n.id) AS inDegree,
           (SELECT COUNT(*) FROM edges e WHERE e.from_id = n.id) AS outDegree
         FROM nodes n
-        WHERE LOWER(n.name) LIKE LOWER(?) OR LOWER(COALESCE(n.signature, '')) LIKE LOWER(?)
+        WHERE
+          LOWER(n.name) LIKE LOWER(?)
+          OR LOWER(COALESCE(n.signature, '')) LIKE LOWER(?)
+          OR LOWER(COALESCE(n.docstring, '')) LIKE LOWER(?)
+          OR LOWER(n.file_path) LIKE LOWER(?)
         ORDER BY
           CASE WHEN LOWER(n.name) = LOWER(?) THEN 0 ELSE 1 END,
+          CASE WHEN LOWER(n.name) LIKE LOWER(?) THEN 0 ELSE 1 END,
+          CASE WHEN LOWER(n.file_path) LIKE LOWER(?) THEN 0 ELSE 1 END,
           inDegree DESC,
           n.name ASC
         LIMIT ?
       `,
     )
-    .all(searchTerm, searchTerm, query, limit) as unknown[];
+    .all(searchTerm, searchTerm, searchTerm, searchTerm, query, `${query}%`, searchTerm, limit) as unknown[];
 
   return rows.map(mapNodeRow);
 }
@@ -416,118 +422,56 @@ export function estimateTokenCount(text: string): number {
 }
 
 export function queryWithBudget(db: Database, question: string, maxTokens = 2000): QueryResult {
-  const identifierPattern =
-    /\b(?:[a-z]+_[a-z0-9_]+|[a-z]+(?:[A-Z][a-z0-9]+)+|[A-Z][a-zA-Z0-9]+)\b/g;
-  const fallbackPattern = /\b[a-zA-Z_][a-zA-Z0-9_]{2,}\b/g;
-  const matches = question.match(identifierPattern) ?? question.match(fallbackPattern) ?? [];
-  const identifiers = Array.from(new Set(matches));
+  const terms = extractSearchTerms(question);
+  const intent = inferQueryIntent(question);
+  const rankedMatches = rankNodesForQuestion(db, question, terms);
 
-  const matchedNodes = new Map<string, NodeInfo>();
-  const relatedNodes = new Map<string, NodeInfo>();
-  const relatedFiles = new Set<string>();
-
-  for (const identifier of identifiers) {
-    const results = searchNodes(db, identifier, 3);
-    for (const node of results) {
-      matchedNodes.set(node.id, node);
-      const subgraph = getSubgraph(db, node.id, 1, 12);
-      for (const subgraphNode of subgraph.nodes) {
-        relatedNodes.set(subgraphNode.id, subgraphNode);
-        relatedFiles.add(subgraphNode.filePath);
-      }
-    }
-  }
-
-  if (matchedNodes.size === 0) {
+  if (rankedMatches.length === 0) {
     const fallback = 'No relevant context found in the indexed graph.';
     return {
       text: fallback,
       nodeCount: 0,
       truncated: false,
       estimatedTokens: estimateTokenCount(fallback),
-      sections: [{ title: 'No Matches', lines: [fallback] }],
+      sections: [{ title: 'NO MATCHES', lines: [fallback] }],
     };
   }
 
-  const matchedList = Array.from(matchedNodes.values()).sort(sortNodesByImportance);
-  const relatedList = Array.from(relatedNodes.values()).sort(sortNodesByImportance);
-  const entryPoints = getEntryPoints(db).filter((node) => relatedFiles.has(node.filePath)).slice(0, 5);
+  const coreNodes = rankedMatches.slice(0, getCoreNodeLimit(intent)).map((match) => match.node);
+  const coreNodeIds = new Set(coreNodes.map((node) => node.id));
+  const relatedNodes = new Map<string, NodeInfo>();
+  const relatedFiles = new Set<string>();
 
-  const sections: QuerySection[] = [];
-
-  if (entryPoints.length) {
-    sections.push({
-      title: 'ENTRY POINTS',
-      lines: entryPoints.map((node) => formatNodeLocation(node, `${node.outDegree} outgoing imports`)),
-    });
-  }
-
-  sections.push({
-    title: 'CORE NODES',
-    lines: matchedList.map((node) => {
-      const signature = node.signature ? ` - ${node.signature}` : '';
-      return `${formatNodeLocation(node, node.type)}${signature}`;
-    }),
-  });
-
-  const callerLines = matchedList.flatMap((node) => {
-    const callers = getCallers(db, node.id, 5);
-    if (!callers.length) {
-      return [`${node.name}: no indexed callers`];
-    }
-
-    return [`${node.name}: ${callers.map((caller) => formatNodeLocation(caller)).join(', ')}`];
-  });
-  sections.push({
-    title: 'CALLERS',
-    lines: callerLines,
-  });
-
-  const signatureLines = matchedList
-    .filter((node) => node.signature || node.docstring)
-    .map((node) => {
-      const pieces = [];
-      if (node.signature) {
-        pieces.push(node.signature);
-      }
-      if (node.docstring) {
-        pieces.push(node.docstring);
-      }
-      return `${node.name}: ${pieces.join(' | ')}`;
-    });
-  if (signatureLines.length) {
-    sections.push({
-      title: 'SIGNATURES',
-      lines: signatureLines,
-    });
-  }
-
-  sections.push({
-    title: 'RELATED FILES',
-    lines: Array.from(relatedFiles)
-      .sort((left, right) => left.localeCompare(right))
-      .slice(0, 10),
-  });
-
-  if (relatedList.length > matchedList.length) {
-    const relatedNodeLines = relatedList
-      .filter((node) => !matchedNodes.has(node.id))
-      .slice(0, 8)
-      .map((node) => formatNodeLocation(node, node.type));
-    if (relatedNodeLines.length) {
-      sections.push({
-        title: 'RELATED NODES',
-        lines: relatedNodeLines,
-      });
+  for (const node of coreNodes) {
+    relatedFiles.add(node.filePath);
+    const subgraph = getSubgraph(db, node.id, 1, 10);
+    for (const subgraphNode of subgraph.nodes) {
+      relatedNodes.set(subgraphNode.id, subgraphNode);
+      relatedFiles.add(subgraphNode.filePath);
     }
   }
 
-  const maxChars = maxTokens * 4;
+  const matchedFiles = searchFiles(db, terms, 6);
+  for (const filePath of matchedFiles) {
+    relatedFiles.add(filePath);
+  }
+
+  const entryPoints = getEntryPoints(db)
+    .filter((node) => relatedFiles.has(node.filePath))
+    .slice(0, intent === 'entrypoints' ? 5 : 3);
+
+  const sections = buildQuerySections(db, intent, coreNodes, relatedNodes, relatedFiles, entryPoints);
+
+  const maxChars = Math.max(400, maxTokens * 4);
   let text = '';
   const keptSections: QuerySection[] = [];
   let truncated = false;
 
   for (const section of sections) {
+    if (section.lines.length === 0) {
+      continue;
+    }
+
     const block = `## ${section.title}\n${section.lines.map((line) => `- ${line}`).join('\n')}\n\n`;
     if (text.length + block.length > maxChars) {
       truncated = true;
@@ -541,7 +485,7 @@ export function queryWithBudget(db: Database, question: string, maxTokens = 2000
   const finalText = text.trim() || 'No relevant context found in the indexed graph.';
   return {
     text: finalText,
-    nodeCount: matchedNodes.size,
+    nodeCount: coreNodeIds.size,
     truncated,
     estimatedTokens: estimateTokenCount(finalText),
     sections: keptSections,
@@ -602,6 +546,13 @@ function sortNodesByImportance(left: NodeInfo, right: NodeInfo): number {
   return right.inDegree - left.inDegree || left.filePath.localeCompare(right.filePath) || left.name.localeCompare(right.name);
 }
 
+type QueryIntent = 'entrypoints' | 'impact' | 'implementation' | 'overview';
+
+interface RankedNodeMatch {
+  node: NodeInfo;
+  score: number;
+}
+
 function formatNodeLocation(node: NodeInfo, suffix?: string): string {
   const location = `${node.filePath}:${node.lineStart ?? 1}`;
   return suffix ? `${node.name} (${location}) - ${suffix}` : `${node.name} (${location})`;
@@ -620,6 +571,316 @@ function extractPathFromNodeId(nodeId: string): string {
 function dedupeEdges(edges: EdgeRecord[]): EdgeRecord[] {
   return Array.from(new Map(edges.map((edge) => [edge.id, edge])).values());
 }
+
+function sanitizeInlineText(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function extractSearchTerms(question: string): string[] {
+  const normalized = question
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_/.-]+/g, ' ')
+    .toLowerCase();
+  const rawTerms = normalized.match(/\b[a-z][a-z0-9]{1,}\b/g) ?? [];
+  const terms = new Set<string>();
+
+  for (const term of rawTerms) {
+    if (STOP_WORDS.has(term)) {
+      continue;
+    }
+    if (term.length >= 3 || IMPORTANT_SHORT_TERMS.has(term)) {
+      terms.add(term);
+    }
+  }
+
+  for (const term of Array.from(terms)) {
+    for (const expansion of TERM_EXPANSIONS[term] ?? []) {
+      terms.add(expansion);
+    }
+  }
+
+  return Array.from(terms).slice(0, 12);
+}
+
+function inferQueryIntent(question: string): QueryIntent {
+  const lower = question.toLowerCase();
+  if (
+    lower.includes('entry point') ||
+    lower.includes('where does') ||
+    lower.includes('where is') ||
+    lower.includes('start') ||
+    lower.includes('flow')
+  ) {
+    return 'entrypoints';
+  }
+  if (
+    lower.includes('impact') ||
+    lower.includes('safe to change') ||
+    lower.includes('risk') ||
+    lower.includes('depend')
+  ) {
+    return 'impact';
+  }
+  if (
+    lower.includes('what does') ||
+    lower.includes('how does') ||
+    lower.includes('implementation') ||
+    lower.includes('logic')
+  ) {
+    return 'implementation';
+  }
+  return 'overview';
+}
+
+function rankNodesForQuestion(db: Database, question: string, terms: string[]): RankedNodeMatch[] {
+  const candidateMap = new Map<string, RankedNodeMatch>();
+  const searchInputs = [question, ...terms];
+
+  for (const input of searchInputs) {
+    const results = searchNodes(db, input, input === question ? 8 : 6);
+    for (const node of results) {
+      if (node.type === 'module') {
+        continue;
+      }
+
+      const score = scoreNodeMatch(node, question, terms);
+      const existing = candidateMap.get(node.id);
+      if (!existing || score > existing.score) {
+        candidateMap.set(node.id, { node, score });
+      }
+    }
+  }
+
+  return Array.from(candidateMap.values())
+    .sort((left, right) => right.score - left.score || sortNodesByImportance(left.node, right.node))
+    .slice(0, 12);
+}
+
+function getCoreNodeLimit(intent: QueryIntent): number {
+  switch (intent) {
+    case 'entrypoints':
+      return 4;
+    case 'impact':
+      return 4;
+    case 'implementation':
+      return 5;
+    case 'overview':
+    default:
+      return 4;
+  }
+}
+
+function scoreNodeMatch(node: NodeInfo, question: string, terms: string[]): number {
+  const lowerName = node.name.toLowerCase();
+  const lowerSignature = (node.signature ?? '').toLowerCase();
+  const lowerDocstring = (node.docstring ?? '').toLowerCase();
+  const lowerPath = node.filePath.toLowerCase();
+  const lowerQuestion = question.toLowerCase();
+
+  let score = Math.min(node.inDegree, 8) * 0.5 + Math.min(node.outDegree, 6) * 0.2;
+
+  if (lowerName === lowerQuestion) {
+    score += 30;
+  }
+  if (lowerPath.includes(lowerQuestion) || lowerSignature.includes(lowerQuestion)) {
+    score += 14;
+  }
+
+  for (const term of terms) {
+    if (lowerName === term) {
+      score += 18;
+    } else if (lowerName.startsWith(term)) {
+      score += 12;
+    } else if (lowerName.includes(term)) {
+      score += 8;
+    }
+
+    if (lowerSignature.includes(term)) {
+      score += 5;
+    }
+    if (lowerDocstring.includes(term)) {
+      score += 4;
+    }
+    if (lowerPath.includes(term)) {
+      score += 6;
+    }
+  }
+
+  return score;
+}
+
+function searchFiles(db: Database, terms: string[], limit: number): string[] {
+  const matches = new Map<string, number>();
+
+  for (const term of terms) {
+    const searchTerm = `%${term}%`;
+    const rows = db
+      .prepare(
+        `
+          SELECT path
+          FROM files
+          WHERE LOWER(path) LIKE LOWER(?)
+          ORDER BY path ASC
+          LIMIT ?
+        `,
+      )
+      .all(searchTerm, limit) as Array<{ path: string }>;
+
+    for (const row of rows) {
+      matches.set(row.path, (matches.get(row.path) ?? 0) + scoreFilePathMatch(row.path, term));
+    }
+  }
+
+  return Array.from(matches.entries())
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .slice(0, limit)
+    .map(([path]) => path);
+}
+
+function scoreFilePathMatch(path: string, term: string): number {
+  const lowerPath = path.toLowerCase();
+  if (lowerPath.endsWith(`/${term}.ts`) || lowerPath.endsWith(`/${term}.js`)) {
+    return 8;
+  }
+  if (lowerPath.includes(`/${term}`)) {
+    return 5;
+  }
+  return 3;
+}
+
+function buildQuerySections(
+  db: Database,
+  intent: QueryIntent,
+  coreNodes: NodeInfo[],
+  relatedNodes: Map<string, NodeInfo>,
+  relatedFiles: Set<string>,
+  entryPoints: NodeInfo[],
+): QuerySection[] {
+  const callerLines = buildCallerLines(db, coreNodes, intent === 'impact' ? 4 : 3);
+  const signatureLines = coreNodes
+    .filter((node) => node.signature || node.docstring)
+    .slice(0, intent === 'implementation' ? 4 : 3)
+    .map((node) => {
+      const summary = [node.signature, node.docstring]
+        .filter(Boolean)
+        .map((value) => sanitizeInlineText(value!))
+        .join(' | ');
+      return `${node.name}: ${summary}`;
+    });
+  const relatedNodeLines = Array.from(relatedNodes.values())
+    .filter((node) => !coreNodes.some((coreNode) => coreNode.id === node.id) && node.type !== 'module')
+    .sort(sortNodesByImportance)
+    .slice(0, intent === 'overview' ? 4 : 2)
+    .map((node) => formatNodeLocation(node, node.type));
+  const fileLines = Array.from(relatedFiles)
+    .sort((left, right) => left.localeCompare(right))
+    .slice(0, intent === 'implementation' ? 4 : 5);
+
+  const coreNodeLines = coreNodes.map((node) => {
+    const signature = node.signature ? ` - ${sanitizeInlineText(node.signature)}` : '';
+    return `${formatNodeLocation(node, node.type)}${signature}`;
+  });
+
+  switch (intent) {
+    case 'entrypoints':
+      return [
+        {
+          title: 'ENTRY POINTS',
+          lines: entryPoints.map((node) => formatNodeLocation(node, `${node.outDegree} outgoing imports`)),
+        },
+        { title: 'CORE NODES', lines: coreNodeLines },
+        { title: 'RELATED FILES', lines: fileLines },
+      ];
+    case 'impact':
+      return [
+        { title: 'CORE NODES', lines: coreNodeLines },
+        { title: 'CALLERS', lines: callerLines },
+        { title: 'RELATED FILES', lines: fileLines },
+      ];
+    case 'implementation':
+      return [
+        { title: 'CORE NODES', lines: coreNodeLines },
+        { title: 'SIGNATURES', lines: signatureLines },
+        { title: 'CALLERS', lines: callerLines },
+        { title: 'RELATED FILES', lines: fileLines },
+      ];
+    case 'overview':
+    default:
+      return [
+        {
+          title: 'ENTRY POINTS',
+          lines: entryPoints.map((node) => formatNodeLocation(node, `${node.outDegree} outgoing imports`)),
+        },
+        { title: 'CORE NODES', lines: coreNodeLines },
+        { title: 'RELATED NODES', lines: relatedNodeLines },
+        { title: 'RELATED FILES', lines: fileLines },
+      ];
+  }
+}
+
+function buildCallerLines(db: Database, coreNodes: NodeInfo[], perNodeLimit: number): string[] {
+  const lines: string[] = [];
+  for (const node of coreNodes) {
+    const callers = getCallers(db, node.id, perNodeLimit);
+    const callerText =
+      callers.length > 0 ? callers.map((caller) => formatNodeLocation(caller)).join(', ') : 'no indexed callers';
+    lines.push(`${node.name}: ${callerText}`);
+  }
+  return lines;
+}
+
+const STOP_WORDS = new Set([
+  'the',
+  'and',
+  'for',
+  'with',
+  'from',
+  'that',
+  'this',
+  'into',
+  'what',
+  'where',
+  'which',
+  'when',
+  'how',
+  'does',
+  'about',
+  'have',
+  'has',
+  'use',
+  'using',
+  'used',
+  'there',
+  'their',
+  'then',
+  'than',
+  'into',
+  'over',
+  'under',
+  'your',
+  'repo',
+  'code',
+  'file',
+  'files',
+]);
+
+const IMPORTANT_SHORT_TERMS = new Set(['api', 'mcp', 'cli', 'sql', 'db', 'ui', 'ux']);
+
+const TERM_EXPANSIONS: Record<string, string[]> = {
+  auth: ['authentication', 'authorize', 'jwt', 'session', 'middleware'],
+  authentication: ['auth', 'authorize', 'jwt', 'session'],
+  query: ['search', 'lookup', 'retrieve', 'graph'],
+  search: ['query', 'lookup', 'find'],
+  index: ['indexing', 'graph', 'parse', 'scan'],
+  graph: ['query', 'node', 'edge', 'subgraph'],
+  watch: ['watcher', 'chokidar', 'reindex', 'sync'],
+  mcp: ['server', 'stdio', 'tool', 'tools'],
+  cli: ['command', 'commander', 'argv', 'program'],
+  daemon: ['watch', 'watcher', 'background', 'sync'],
+  parse: ['parser', 'ast', 'tree'],
+  parser: ['parse', 'ast', 'tree'],
+  impact: ['dependents', 'risk', 'callers', 'references'],
+};
 
 function getCount(db: Database, query: string): number {
   return (db.prepare(query).get() as { count: number }).count;

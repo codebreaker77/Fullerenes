@@ -7,3 +7,6 @@ packages/*/tsconfig.tsbuildinfo
 coverage/
 *.tgz
 .DS_Store
+.cursor/
+AGENTS.md
+CLAUDE.md

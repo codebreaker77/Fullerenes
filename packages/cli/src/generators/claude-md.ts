@@ -9,12 +9,9 @@ import {
   getStats,
   getTopNodes,
 } from 'fullerenes-core';
-import { generateProjectSummary, initAnthropic } from './anthropic.js';
 import { getGeneratedMarkers, writeGeneratedMarkdownFile } from './files.js';
 
 export async function generateClaudeMd(rootDir: string, db: Database) {
-  initAnthropic();
-
   const stats = getStats(db);
   const topNodes = getTopNodes(db, 40)
     .filter((node) => node.type !== 'module')
@@ -37,8 +34,7 @@ export async function generateClaudeMd(rootDir: string, db: Database) {
     topFilesContext += `- ${module.path}: ${exports || 'no indexed exports'}\n`;
   }
 
-  const overview = await generateProjectSummary(
-    db,
+  const overview = buildProjectOverview(
     dominantLanguage,
     stats.fileCount,
     stats.nodeCount,
@@ -113,9 +109,16 @@ ${projectStructure}
 
   md += `
 ## For AI agents
-When working in this codebase, use the Fullerenes MCP server:
-  claude mcp add fullerenes -- npx fullerenes mcp
-Key tools available: \`query_codebase\`, \`get_function\`, \`find_entry_points\`, \`search_code\`, \`get_callers\`, \`predict_impact\`
+- Prefer Fullerenes over broad raw-file scans when you need repo structure, entry points, symbol lookup, callers, or high-level architecture.
+- If Fullerenes MCP is connected, start with these tools: \`query_codebase\`, \`find_entry_points\`, \`search_code\`, \`get_function\`, \`get_file_context\`, \`get_callers\`, \`get_stats\`, \`get_subgraph\`.
+- If MCP is not connected but the CLI is available, use:
+  - \`fullerenes stats ${rootDir}\` for a quick graph overview
+  - \`fullerenes query "<question>"\` for natural-language retrieval
+  - \`fullerenes index ${rootDir}\` after notable code changes
+  - \`fullerenes watch ${rootDir}\` during long-lived coding sessions to keep the graph fresh
+- If this repository has not been indexed yet, run \`fullerenes init ${rootDir}\` before doing deep exploration.
+- When an answer can be grounded from Fullerenes results, prefer that over loading many large files into context. Fall back to direct file reads only for exact implementation details, recent unindexed changes, or verification.
+- For MCP-capable clients, register Fullerenes with a stdio command like \`npx fullerenes mcp ${rootDir}\` so the agent can query the local graph directly.
 
 ## Token cost
 Approximate token cost for this generated context: ${estimateTokenCount(md)} tokens
@@ -128,6 +131,64 @@ Approximate token cost for this generated context: ${estimateTokenCount(md)} tok
 
   writeGeneratedMarkdownFile(rootDir, 'CLAUDE.md', managedContent);
   writeGeneratedMarkdownFile(rootDir, 'AGENTS.md', managedContent);
+}
+
+function buildProjectOverview(
+  language: string,
+  fileCount: number,
+  nodeCount: number,
+  moduleCount: number,
+  topFilesContext: string,
+): string {
+  const lowerContext = topFilesContext.toLowerCase();
+  const projectKind = inferProjectKind(lowerContext);
+  const dominantFocus = inferDominantFocus(lowerContext);
+
+  return `A ${language} ${projectKind} with ${fileCount} files, ${nodeCount} indexed functions and classes, and ${moduleCount} key modules. The most central areas currently indexed focus on ${dominantFocus}.`;
+}
+
+function inferProjectKind(context: string): string {
+  if (context.includes('cli') || context.includes('command')) {
+    return 'CLI tool';
+  }
+  if (context.includes('server') || context.includes('route') || context.includes('http')) {
+    return 'backend service';
+  }
+  if (context.includes('graph') || context.includes('query') || context.includes('index')) {
+    return 'knowledge graph tool';
+  }
+  if (context.includes('parser') || context.includes('language')) {
+    return 'code analysis tool';
+  }
+  return 'project';
+}
+
+function inferDominantFocus(context: string): string {
+  const areas: string[] = [];
+  if (context.includes('query')) {
+    areas.push('querying');
+  }
+  if (context.includes('graph')) {
+    areas.push('graph traversal');
+  }
+  if (context.includes('parser')) {
+    areas.push('language parsing');
+  }
+  if (context.includes('index')) {
+    areas.push('indexing');
+  }
+  if (context.includes('mcp')) {
+    areas.push('MCP integration');
+  }
+  if (context.includes('watch')) {
+    areas.push('watch mode');
+  }
+
+  if (areas.length === 0) {
+    return 'core codebase workflows';
+  }
+
+  return areas.slice(0, 3).join(', ');
 }
 
 function renderProjectStructure(paths: string[]): string {
