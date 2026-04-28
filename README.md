@@ -181,7 +181,39 @@ They are bad at:
 
 Fullerenes is the layer that gets the agent to the right code fast.
 
-## Benchmark
+## Preliminary Benchmarks
+
+These are early smoke-test results, not a full benchmark report.
+
+### SWE-bench Verified smoke comparison
+
+Single-instance comparison on `sympy__sympy-20590` using the same Codex model:
+
+| Scenario | Tokens used | Notes |
+| --- | ---: | --- |
+| Codex baseline | 91,949 | Produced the fix patch directly from repo exploration |
+| Codex + Fullerenes | 32,945 | Produced the same fix shape with graph-guided retrieval |
+| Reduction | 64.2% fewer tokens | Same touched files and comparable patch output |
+
+What this means:
+- preliminary evidence that Fullerenes can cut repo-understanding token cost on real software-engineering tasks
+- not enough data yet to claim broad SWE-bench improvements
+
+### LiveCodeBench Lite mini sample
+
+Tiny closed-book coding sample using the first two Lite problems:
+
+| Problem | Result | Tokens used |
+| --- | --- | ---: |
+| `1873_A` | 5 / 5 tests passed | 5,490 |
+| `1873_B` | 13 / 13 tests passed | 10,696 |
+| Total | 2 / 2 solved | 16,186 |
+
+What this means:
+- Codex handles small standalone coding tasks cleanly in a lightweight benchmark loop
+- this validates the agent path, but not the Fullerenes retrieval layer directly
+
+### Local repo context compression
 
 Local benchmark on this repository using Fullerenes output vs concatenating the source files touched by the returned subgraph:
 
@@ -194,6 +226,7 @@ Local benchmark on this repository using Fullerenes output vs concatenating the 
 Methodology notes:
 - token estimate uses the project heuristic `1 token ~= 4 characters`
 - benchmark questions were run against this repo's local graph
+- benchmark artifacts are preliminary and intended as transparent early validation
 
 ## Comparison
 
